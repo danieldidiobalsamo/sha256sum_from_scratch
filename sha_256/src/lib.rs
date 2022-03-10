@@ -63,6 +63,44 @@ fn init_hash() -> (Vec<u32>, Vec<u32>) {
     (h_0, k)
 }
 
+fn sigma_2(x: u32) -> u32 {
+    (x.rotate_right(7)) ^ (x.rotate_right(18)) ^ (x >> 3)
+}
+
+fn sigma_1(x: u32) -> u32 {
+    (x.rotate_right(17)) ^ (x.rotate_right(19)) ^ (x >> 10)
+}
+
+fn message_schedule(chunk: &[u8]) -> Vec<u32> {
+    // initializing the schedule with zeros
+    let mut w: Vec<u32> = vec![0; 64];
+
+    // copying the chunk into first 16 words of schedule message
+    for i in 0..16 {
+        let mut bytes_line = [0u8; 4];
+        bytes_line.clone_from_slice(&chunk[4 * i..(4 * i) + 4]);
+
+        let mut word = 0u32;
+
+        for j in 0..4 {
+            word |= (bytes_line[j] as u32) << (24 - (8 * j));
+        }
+
+        w[i] = word;
+    }
+
+    // scheduling
+
+    for i in 16..=63 {
+        w[i] = sigma_1(w[i - 2])
+            .wrapping_add(w[i - 7])
+            .wrapping_add(sigma_2(w[i - 15]))
+            .wrapping_add(w[i - 16]);
+    }
+
+    w
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -143,5 +181,45 @@ mod tests {
 
         assert_eq!(h_0, h_0_good);
         assert_eq!(k, k_good);
+    }
+
+    #[test]
+    fn sigma_2_test() {
+        assert_eq!(sigma_2(0), 0);
+        assert_eq!(sigma_2(1070767979), 1985952039);
+    }
+
+    #[test]
+    fn sigma_1_test() {
+        assert_eq!(sigma_1(0), 0);
+        assert_eq!(sigma_1(2554764994), 2627669644);
+    }
+
+    #[test]
+    fn message_scheduling() {
+        let raw_msg = String::from("hi");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        let good_schedule = vec![
+            1751744512, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 1751744512, 655360,
+            4028244825, 1073742468, 1442562182, 16951296, 2554764994, 1768538123, 2628325004,
+            3359156034, 3870358022, 2641818552, 1669114800, 1070767979, 1243915016, 652088426,
+            1989877954, 3567380066, 2182544060, 1769595360, 3793356024, 1233562599, 1845350614,
+            2846974476, 2029867211, 391648972, 822598888, 3482373360, 961015826, 1589172728,
+            1332217501, 1505673201, 942134798, 1705278904, 418803759, 3236787579, 2755738675,
+            2187538558, 3596201111, 2915422290, 1644498225, 2748313998, 3832314439, 1510965048,
+            991015767, 3092557612, 863408739, 1830348433,
+        ];
+
+        assert_eq!(schedule, good_schedule);
     }
 }
