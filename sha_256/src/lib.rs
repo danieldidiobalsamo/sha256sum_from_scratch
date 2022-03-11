@@ -222,6 +222,13 @@ fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: WorkingVariables) ->
     updated
 }
 
+fn append_hash_values(hash_values: Vec<u32>) -> String {
+    hash_values
+        .into_iter()
+        .map(|h| format!("{:08x}", h))
+        .collect::<String>()
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -489,5 +496,20 @@ mod tests {
         ];
 
         assert_eq!(updated_hash, updated);
+    }
+
+    #[test]
+    fn append_hash_values_test() {
+        let updated_hash = vec![
+            0x8f434346, 0x648f6b96, 0xdf89dda9, 0x01c5176b, 0x10a6d839, 0x61dd3c1a, 0xc88b59b2,
+            0xdc327aa4,
+        ];
+
+        let hash = append_hash_values(updated_hash);
+
+        let hash_good =
+            String::from("8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4");
+
+        assert_eq!(hash, hash_good);
     }
 }
