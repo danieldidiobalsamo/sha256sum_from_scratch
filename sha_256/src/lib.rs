@@ -101,6 +101,70 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
     w
 }
 
+#[derive(Debug, PartialEq)]
+struct WorkingVariables {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+    e: u32,
+    f: u32,
+    g: u32,
+    h: u32,
+}
+
+fn big_sigma_0(x: u32) -> u32 {
+    x.rotate_right(2) ^ x.rotate_right(13) ^ x.rotate_right(22)
+}
+
+fn big_sigma_1(x: u32) -> u32 {
+    x.rotate_right(6) ^ x.rotate_right(11) ^ x.rotate_right(25)
+}
+
+fn choice(e: u32, f: u32, g: u32) -> u32 {
+    (e & f) ^ (!e & g)
+}
+
+fn majority(a: u32, b: u32, c: u32) -> u32 {
+    (a & b) ^ (a & c) ^ (b & c)
+}
+
+fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariables {
+    let s1 = big_sigma_1(current.e);
+    let ch = choice(current.e, current.f, current.g);
+    println!("ch = {ch}");
+    let temp1 = current
+        .h
+        .wrapping_add(s1)
+        .wrapping_add(ch)
+        .wrapping_add(k)
+        .wrapping_add(word);
+
+    let s0 = big_sigma_0(current.a);
+    let maj = majority(current.a, current.b, current.c);
+    let temp2 = s0.wrapping_add(maj);
+
+    let h = current.g;
+    let g = current.f;
+    let f = current.e;
+    let e = current.d.wrapping_add(temp1);
+    let d = current.c;
+    let c = current.b;
+    let b = current.a;
+    let a = temp1.wrapping_add(temp2);
+
+    WorkingVariables {
+        a,
+        b,
+        c,
+        d,
+        e,
+        f,
+        g,
+        h,
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -196,6 +260,28 @@ mod tests {
     }
 
     #[test]
+    fn big_sigma_0_test() {
+        assert_eq!(big_sigma_0(1550818457), 228811051);
+    }
+
+    #[test]
+    fn big_sigma_1_test() {
+        assert_eq!(big_sigma_1(2184641807), 2223381226);
+    }
+
+    #[test]
+    fn choice_test() {
+        let ch = choice(2184641807, 1443935371, 1754755858);
+        assert_eq!(ch, 1787934235);
+    }
+
+    #[test]
+    fn majority_test() {
+        let maj = majority(1550818457, 2150493220, 3784171943);
+        assert_eq!(maj, 3224235173);
+    }
+
+    #[test]
     fn message_scheduling() {
         let raw_msg = String::from("hi");
 
@@ -221,5 +307,48 @@ mod tests {
         ];
 
         assert_eq!(schedule, good_schedule);
+    }
+
+    #[test]
+    fn compress_word_test() {
+        let raw_msg = String::from("hi");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        let (current, k) = init_hash();
+
+        let current_working_var = WorkingVariables {
+            a: current[0],
+            b: current[1],
+            c: current[2],
+            d: current[3],
+            e: current[4],
+            f: current[5],
+            g: current[6],
+            h: current[7],
+        };
+
+        let compressed = compress_word(current_working_var, schedule[0], k[0]);
+
+        let compressed_good = WorkingVariables {
+            a: 1685194829,
+            b: 1779033703,
+            c: 3144134277,
+            d: 1013904242,
+            e: 20013730,
+            f: 1359893119,
+            g: 2600822924,
+            h: 528734635,
+        };
+
+        assert_eq!(compressed, compressed_good);
     }
 }
