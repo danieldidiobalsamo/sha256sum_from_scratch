@@ -201,7 +201,7 @@ fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariabl
 fn compress_chunk(
     init_working_var: WorkingVariables,
     schedule: Vec<u32>,
-    k: Vec<u32>,
+    k: &Vec<u32>,
 ) -> WorkingVariables {
     let mut current_working_var = init_working_var;
 
@@ -227,6 +227,38 @@ fn append_hash_values(hash_values: Vec<u32>) -> String {
         .into_iter()
         .map(|h| format!("{:08x}", h))
         .collect::<String>()
+}
+
+fn sha_256(raw_msg: String) -> String {
+    let msg = pre_process(raw_msg.as_bytes().to_vec());
+
+    let (hash, k) = init_hash();
+    let mut working_var = WorkingVariables {
+        a: hash[0],
+        b: hash[1],
+        c: hash[2],
+        d: hash[3],
+        e: hash[4],
+        f: hash[5],
+        g: hash[6],
+        h: hash[7],
+    };
+
+    let nb_blocks = msg.len() / 64;
+    for i in 0..nb_blocks {
+        let block = match parse_block(&msg, i) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        working_var = compress_chunk(working_var, schedule, &k);
+    }
+
+    let updated_hash = add_compressed_chunk_in_hash(hash, working_var);
+
+    append_hash_values(updated_hash)
 }
 
 #[cfg(test)]
@@ -443,7 +475,7 @@ mod tests {
             h: hash[7],
         };
 
-        let compressed = compress_chunk(init_working_var, schedule, k);
+        let compressed = compress_chunk(init_working_var, schedule, &k);
 
         let compressed_good = WorkingVariables {
             a: 624516319,
@@ -486,7 +518,7 @@ mod tests {
             h: hash[7],
         };
 
-        let compressed = compress_chunk(init_working_var, schedule, k);
+        let compressed = compress_chunk(init_working_var, schedule, &k);
 
         let updated_hash = add_compressed_chunk_in_hash(hash, compressed);
 
@@ -509,6 +541,26 @@ mod tests {
 
         let hash_good =
             String::from("8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4");
+
+        assert_eq!(hash, hash_good);
+    }
+
+    #[test]
+    fn sha_256_empty_string() {
+        let msg = String::from("");
+
+        let hash = sha_256(msg);
+        let hash_good = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+        assert_eq!(hash, hash_good);
+    }
+
+    #[test]
+    fn sha_256_one_chunk() {
+        let msg = String::from("hi");
+
+        let hash = sha_256(msg);
+        let hash_good = "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4";
 
         assert_eq!(hash, hash_good);
     }
