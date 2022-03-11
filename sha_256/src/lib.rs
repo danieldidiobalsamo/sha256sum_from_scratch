@@ -80,8 +80,7 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
 
     // copying the chunk into first 16 words of schedule message
     for i in 0..16 {
-        let mut bytes_line = [0u8; 4];
-        bytes_line.clone_from_slice(&chunk[4 * i..(4 * i) + 4]);
+        let bytes_line = &chunk[4 * i..(4 * i) + 4];
 
         let mut word = 0u32;
 
