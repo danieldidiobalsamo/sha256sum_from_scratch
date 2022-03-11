@@ -113,6 +113,40 @@ struct WorkingVariables {
     h: u32,
 }
 
+impl WorkingVariables {
+    fn iter(&self) -> Iter {
+        Iter {
+            inner: self,
+            index: 0,
+        }
+    }
+}
+
+struct Iter<'a> {
+    inner: &'a WorkingVariables,
+    index: u8,
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = &'a u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ret = match self.index {
+            0 => &self.inner.a,
+            1 => &self.inner.b,
+            2 => &self.inner.c,
+            3 => &self.inner.d,
+            4 => &self.inner.e,
+            5 => &self.inner.f,
+            6 => &self.inner.g,
+            7 => &self.inner.h,
+            _ => return None,
+        };
+        self.index += 1;
+        Some(ret)
+    }
+}
+
 fn big_sigma_0(x: u32) -> u32 {
     x.rotate_right(2) ^ x.rotate_right(13) ^ x.rotate_right(22)
 }
@@ -176,6 +210,16 @@ fn compress_chunk(
     }
 
     current_working_var
+}
+
+fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: WorkingVariables) -> Vec<u32> {
+    let mut updated: Vec<u32> = Vec::new();
+
+    for (index, var) in compressed.iter().enumerate() {
+        updated.push(hash[index].wrapping_add(*var));
+    }
+
+    updated
 }
 
 #[cfg(test)]
@@ -406,5 +450,44 @@ mod tests {
         };
 
         assert_eq!(compressed, compressed_good);
+    }
+
+    #[test]
+    fn add_compressed_chunk_in_hash_test() {
+        let (hash, k) = init_hash();
+
+        let raw_msg = String::from("hi");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        let init_working_var = WorkingVariables {
+            a: hash[0],
+            b: hash[1],
+            c: hash[2],
+            d: hash[3],
+            e: hash[4],
+            f: hash[5],
+            g: hash[6],
+            h: hash[7],
+        };
+
+        let compressed = compress_chunk(init_working_var, schedule, k);
+
+        let updated_hash = add_compressed_chunk_in_hash(hash, compressed);
+
+        let updated = vec![
+            0x8f434346, 0x648f6b96, 0xdf89dda9, 0x01c5176b, 0x10a6d839, 0x61dd3c1a, 0xc88b59b2,
+            0xdc327aa4,
+        ];
+
+        assert_eq!(updated_hash, updated);
     }
 }
