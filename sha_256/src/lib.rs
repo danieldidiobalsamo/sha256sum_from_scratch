@@ -132,7 +132,6 @@ fn majority(a: u32, b: u32, c: u32) -> u32 {
 fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariables {
     let s1 = big_sigma_1(current.e);
     let ch = choice(current.e, current.f, current.g);
-    println!("ch = {ch}");
     let temp1 = current
         .h
         .wrapping_add(s1)
@@ -163,6 +162,20 @@ fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariabl
         g,
         h,
     }
+}
+
+fn compress_chunk(
+    init_working_var: WorkingVariables,
+    schedule: Vec<u32>,
+    k: Vec<u32>,
+) -> WorkingVariables {
+    let mut current_working_var = init_working_var;
+
+    for i in 0..64 {
+        current_working_var = compress_word(current_working_var, schedule[i], k[i]);
+    }
+
+    current_working_var
 }
 
 #[cfg(test)]
@@ -347,6 +360,49 @@ mod tests {
             f: 1359893119,
             g: 2600822924,
             h: 528734635,
+        };
+
+        assert_eq!(compressed, compressed_good);
+    }
+
+    #[test]
+    fn compress_chunk_test() {
+        let raw_msg = String::from("hi");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        let (hash, k) = init_hash();
+
+        let init_working_var = WorkingVariables {
+            a: hash[0],
+            b: hash[1],
+            c: hash[2],
+            d: hash[3],
+            e: hash[4],
+            f: hash[5],
+            g: hash[6],
+            h: hash[7],
+        };
+
+        let compressed = compress_chunk(init_working_var, schedule, k);
+
+        let compressed_good = WorkingVariables {
+            a: 624516319,
+            b: 2837953809,
+            c: 2736450103,
+            d: 1551180337,
+            e: 3214443962,
+            f: 3336033166,
+            g: 2835841031,
+            h: 2152836491,
         };
 
         assert_eq!(compressed, compressed_good);
