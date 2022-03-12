@@ -4,10 +4,8 @@ fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     // appending 1 (1000 0000)
     msg.push(128);
 
-    // padding such as msg length is a multiple of 512
-    let nb_zero_bits = 448u64
-        .wrapping_sub(original_length_bits.wrapping_add(1u64))
-        .wrapping_sub(7u64); // 7 bits are already in the "one" padding
+    // padding with zeros such as msg length is a multiple of 512
+    let nb_zero_bits = (512 + 448 - ((original_length_bits as u32) % 512 + 1)) % 512;
     let nb_zero_bytes = nb_zero_bits / 8;
 
     for _ in 0..nb_zero_bytes {
@@ -302,6 +300,26 @@ mod tests {
     }
 
     #[test]
+    fn pre_processing_long_one() {
+        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+
+        let msg = pre_process(msg_bytes);
+
+        let pre_processed_bytes: Vec<u8> = vec![
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 128, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 88,
+        ];
+
+        assert_eq!(msg, pre_processed_bytes);
+    }
+
+    #[test]
     fn parse_block_valid() {
         let raw_msg = String::from("hi");
 
@@ -580,6 +598,16 @@ mod tests {
 
         let hash = sha_256(msg);
         let hash_good = "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4";
+
+        assert_eq!(hash, hash_good);
+    }
+
+    #[test]
+    fn sha_256_long_one() {
+        let msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        let hash = sha_256(msg);
+        let hash_good = "3e24531cdaa595ab56f976b96c1a1df8009eabec300a5a0261c0e44f47a43b89";
 
         assert_eq!(hash, hash_good);
     }
