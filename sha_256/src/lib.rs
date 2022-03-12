@@ -33,7 +33,7 @@ fn parse_block<'a>(msg: &'a Vec<u8>, index: usize) -> Result<&'a [u8], &'static 
     }
 
     let start = ((512 * index) / 8) as usize;
-    let end = ((start + 512) / 8) as usize;
+    let end = (start + (512 / 8)) as usize;
 
     Ok(&msg[start..end])
 }
@@ -355,6 +355,40 @@ mod tests {
     }
 
     #[test]
+    fn parse_block_whole_message() {
+        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block0 = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let good_block0 = vec![
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+        ];
+
+        assert_eq!(block0, good_block0);
+
+        let block1 = match parse_block(&msg, 1) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let good_block1 = vec![
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
+            128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 88,
+        ];
+
+        assert_eq!(block1, good_block1);
+    }
+
+    #[test]
     fn hash_init() {
         let (h_0, k) = init_hash();
 
@@ -428,7 +462,7 @@ mod tests {
 
         let schedule = message_schedule(&block);
 
-        let good_schedule = vec![
+        let good_schedule: Vec<u32> = vec![
             1751744512, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 1751744512, 655360,
             4028244825, 1073742468, 1442562182, 16951296, 2554764994, 1768538123, 2628325004,
             3359156034, 3870358022, 2641818552, 1669114800, 1070767979, 1243915016, 652088426,
