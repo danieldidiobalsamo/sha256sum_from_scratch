@@ -76,7 +76,7 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
     // initializing the schedule with zeros
     let mut w: Vec<u32> = vec![0; 64];
 
-    // copying the chunk into first 16 words of schedule message
+    // copying the chunk into first 16 words of message schedule
     for i in 0..16 {
         let bytes_line = &chunk[4 * i..(4 * i) + 4];
 
@@ -229,22 +229,14 @@ fn append_hash_values(hash_values: Vec<u32>) -> String {
         .collect::<String>()
 }
 
-fn sha_256(raw_msg: String) -> String {
-    let msg = pre_process(raw_msg.as_bytes().to_vec());
-
-    let (hash, k) = init_hash();
-    let mut working_var = WorkingVariables {
-        a: hash[0],
-        b: hash[1],
-        c: hash[2],
-        d: hash[3],
-        e: hash[4],
-        f: hash[5],
-        g: hash[6],
-        h: hash[7],
-    };
-
+fn compress_pre_processed_msg(
+    msg: Vec<u8>,
+    init_working_var: WorkingVariables,
+    k: Vec<u32>,
+) -> WorkingVariables {
+    let mut working_var = init_working_var;
     let nb_blocks = msg.len() / 64;
+
     for i in 0..nb_blocks {
         let block = match parse_block(&msg, i) {
             Ok(block) => block,
@@ -255,6 +247,26 @@ fn sha_256(raw_msg: String) -> String {
 
         working_var = compress_chunk(working_var, schedule, &k);
     }
+
+    working_var
+}
+
+fn sha_256(raw_msg: String) -> String {
+    let msg = pre_process(raw_msg.as_bytes().to_vec());
+
+    let (hash, k) = init_hash();
+    let init_working_var = WorkingVariables {
+        a: hash[0],
+        b: hash[1],
+        c: hash[2],
+        d: hash[3],
+        e: hash[4],
+        f: hash[5],
+        g: hash[6],
+        h: hash[7],
+    };
+
+    let working_var = compress_pre_processed_msg(msg, init_working_var, k);
 
     let updated_hash = add_compressed_chunk_in_hash(hash, working_var);
 
@@ -477,6 +489,36 @@ mod tests {
     }
 
     #[test]
+    fn message_scheduling_long_one() {
+        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+        let msg = pre_process(msg_bytes);
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        let schedule = message_schedule(&block);
+
+        let good_schedule: Vec<u32> = vec![
+            1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873,
+            1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873,
+            1633771873, 1633771873, 4127079996, 4127079996, 845026631, 845026631, 562127449,
+            562127449, 4142485024, 2340825851, 2097165901, 4202070679, 1214676619, 2864781893,
+            169889552, 2638362293, 2986790745, 619170806, 2545628807, 1752194553, 3897866632,
+            1354584167, 2037939211, 3798754737, 3125072781, 2053181897, 1764381550, 231544716,
+            3582021090, 2147669598, 1900325583, 2688439274, 112371858, 1110188099, 2407788112,
+            4108513933, 2210941747, 4027291822, 2910535786, 3783077996, 2655981588, 2366978167,
+            612225234, 1494184812, 815738812, 1069923231, 447001511, 943759201, 3929715958,
+            242742810,
+        ];
+
+        assert_eq!(schedule, good_schedule);
+    }
+
+    #[test]
     fn compress_word_test() {
         let raw_msg = String::from("hi");
 
@@ -560,6 +602,43 @@ mod tests {
         };
 
         assert_eq!(compressed, compressed_good);
+    }
+
+    #[test]
+    fn compress_pre_processed_msg_test() {
+        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+
+        let msg = pre_process(msg_bytes);
+
+        let (hash, k) = init_hash();
+
+        let init_working_var = WorkingVariables {
+            a: hash[0],
+            b: hash[1],
+            c: hash[2],
+            d: hash[3],
+            e: hash[4],
+            f: hash[5],
+            g: hash[6],
+            h: hash[7],
+        };
+
+        let working_var = compress_pre_processed_msg(msg, init_working_var, k);
+
+        let working_var_good = WorkingVariables {
+            a: 0x5ec89b00,
+            b: 0xf2878f85,
+            c: 0x5bb3ce25,
+            d: 0x1c460ec7,
+            e: 0x4e4043d6,
+            f: 0x5935c041,
+            g: 0xb6309b26,
+            h: 0x4740dd23,
+        };
+
+        assert_eq!(working_var, working_var_good);
     }
 
     #[test]
