@@ -2,6 +2,8 @@ use std::env;
 use std::error::Error;
 use std::fs;
 
+use sha_256;
+
 pub struct Config {
     pub filename: String,
 }
@@ -20,9 +22,10 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let _content = fs::read_to_string(config.filename)?;
+    let content = fs::read_to_string(config.filename)?;
 
-    // ... code related to sha256 computation
+    let hash = sha_256::sha_256(content);
+    println!("{hash}");
 
     Ok(())
 }

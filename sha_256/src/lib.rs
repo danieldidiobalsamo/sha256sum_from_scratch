@@ -268,7 +268,7 @@ fn compress_msg(
     hash
 }
 
-fn sha_256(raw_msg: String) -> String {
+pub fn sha_256(raw_msg: String) -> String {
     let msg = pre_process(raw_msg.as_bytes().to_vec());
 
     let (hash, k) = init_hash();
@@ -292,6 +292,7 @@ fn sha_256(raw_msg: String) -> String {
 mod tests {
 
     use super::*;
+    use std::fs;
 
     #[test]
     fn pre_processing() {
@@ -730,6 +731,16 @@ mod tests {
 
         let hash = sha_256(msg);
         let hash_good = "3e24531cdaa595ab56f976b96c1a1df8009eabec300a5a0261c0e44f47a43b89";
+
+        assert_eq!(hash, hash_good);
+    }
+
+    #[test]
+    fn sha_256_file() {
+        let msg = fs::read_to_string("./sample_files_for_testing/sample").unwrap();
+
+        let hash = sha_256(msg);
+        let hash_good = "a5cac392386ce08fc3ce1a089c912a0f2d7de925a8f5617367c9822ee9b28f37";
 
         assert_eq!(hash, hash_good);
     }
