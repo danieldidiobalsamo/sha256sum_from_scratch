@@ -120,6 +120,17 @@ impl WorkingVariables {
             index: 0,
         }
     }
+
+    fn update(&mut self, hash: &[u32]) {
+        self.a = hash[0];
+        self.b = hash[1];
+        self.c = hash[2];
+        self.d = hash[3];
+        self.e = hash[4];
+        self.f = hash[5];
+        self.g = hash[6];
+        self.h = hash[7];
+    }
 }
 
 struct Iter<'a> {
@@ -212,7 +223,7 @@ fn compress_chunk(
     current_working_var
 }
 
-fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: WorkingVariables) -> Vec<u32> {
+fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: &WorkingVariables) -> Vec<u32> {
     let mut updated: Vec<u32> = Vec::new();
 
     for (index, var) in compressed.iter().enumerate() {
@@ -229,15 +240,19 @@ fn append_hash_values(hash_values: Vec<u32>) -> String {
         .collect::<String>()
 }
 
-fn compress_pre_processed_msg(
+fn compress_msg(
     msg: Vec<u8>,
     init_working_var: WorkingVariables,
     k: Vec<u32>,
-) -> WorkingVariables {
+    init_hash: Vec<u32>,
+) -> Vec<u32> {
+    let mut hash = init_hash;
     let mut working_var = init_working_var;
-    let nb_blocks = msg.len() / 64;
 
+    let nb_blocks = msg.len() / 64;
     for i in 0..nb_blocks {
+        working_var.update(&hash);
+
         let block = match parse_block(&msg, i) {
             Ok(block) => block,
             Err(err) => panic!("{err}"),
@@ -246,9 +261,11 @@ fn compress_pre_processed_msg(
         let schedule = message_schedule(&block);
 
         working_var = compress_chunk(working_var, schedule, &k);
+
+        hash = add_compressed_chunk_in_hash(hash, &working_var);
     }
 
-    working_var
+    hash
 }
 
 fn sha_256(raw_msg: String) -> String {
@@ -266,9 +283,7 @@ fn sha_256(raw_msg: String) -> String {
         h: hash[7],
     };
 
-    let working_var = compress_pre_processed_msg(msg, init_working_var, k);
-
-    let updated_hash = add_compressed_chunk_in_hash(hash, working_var);
+    let updated_hash = compress_msg(msg, init_working_var, k, hash);
 
     append_hash_values(updated_hash)
 }
@@ -605,7 +620,7 @@ mod tests {
     }
 
     #[test]
-    fn compress_pre_processed_msg_test() {
+    fn compress_msg_test() {
         let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         let msg_bytes = raw_msg.as_bytes().to_vec();
@@ -625,20 +640,14 @@ mod tests {
             h: hash[7],
         };
 
-        let working_var = compress_pre_processed_msg(msg, init_working_var, k);
+        let updated_hash = compress_msg(msg, init_working_var, k, hash);
 
-        let working_var_good = WorkingVariables {
-            a: 0x5ec89b00,
-            b: 0xf2878f85,
-            c: 0x5bb3ce25,
-            d: 0x1c460ec7,
-            e: 0x4e4043d6,
-            f: 0x5935c041,
-            g: 0xb6309b26,
-            h: 0x4740dd23,
-        };
+        let updated_hash_good = vec![
+            0x3e24531c, 0xdaa595ab, 0x56f976b9, 0x6c1a1df8, 0x009eabec, 0x300a5a02, 0x61c0e44f,
+            0x47a43b89,
+        ];
 
-        assert_eq!(working_var, working_var_good);
+        assert_eq!(updated_hash, updated_hash_good);
     }
 
     #[test]
@@ -670,7 +679,7 @@ mod tests {
 
         let compressed = compress_chunk(init_working_var, schedule, &k);
 
-        let updated_hash = add_compressed_chunk_in_hash(hash, compressed);
+        let updated_hash = add_compressed_chunk_in_hash(hash, &compressed);
 
         let updated = vec![
             0x8f434346, 0x648f6b96, 0xdf89dda9, 0x01c5176b, 0x10a6d839, 0x61dd3c1a, 0xc88b59b2,
