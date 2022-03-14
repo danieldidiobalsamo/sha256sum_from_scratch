@@ -200,9 +200,70 @@ mod tests {
     use super::*;
     use std::fs;
 
+    ////////////////// functions for setting up unit tests scenarios
+    fn get_short_msg() -> String {
+        String::from("hi")
+    }
+
+    fn get_long_msg() -> String {
+        String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    }
+
+    fn get_short_pre_processed() -> Vec<u8> {
+        let raw_msg = get_short_msg();
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+
+        pre_process(msg_bytes)
+    }
+
+    fn get_long_pre_processed() -> Vec<u8> {
+        let raw_msg = get_long_msg();
+        let msg_bytes = raw_msg.as_bytes().to_vec();
+
+        pre_process(msg_bytes)
+    }
+
+    fn get_first_block_short() -> Vec<u8> {
+        let msg = get_short_pre_processed();
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        block.clone().to_vec()
+    }
+
+    fn get_first_block_long() -> Vec<u8> {
+        let msg = get_long_pre_processed();
+
+        let block = match parse_block(&msg, 0) {
+            Ok(block) => block,
+            Err(err) => panic!("{err}"),
+        };
+
+        block.clone().to_vec()
+    }
+
+    fn get_schedule_short() -> Vec<u32> {
+        let block = get_first_block_short();
+
+        message_schedule(&block)
+    }
+
+    fn get_compressed_msg_short() -> WorkingVariables {
+        let schedule = get_schedule_short();
+        let (hash, k) = init_hash();
+
+        let init_working_var = WorkingVariables::new(&hash);
+
+        compress_chunk(init_working_var, schedule, &k)
+    }
+
+    ////////////////// unit tests
     #[test]
     fn pre_processing() {
-        let raw_msg = String::from("hi");
+        let raw_msg = get_short_msg(); // setting up this scenario
 
         let msg_bytes = raw_msg.as_bytes().to_vec();
         let msg = pre_process(msg_bytes);
@@ -217,25 +278,8 @@ mod tests {
     }
 
     #[test]
-    fn pre_processing_two_chunks() {
-        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-
-        let msg = pre_process(msg_bytes);
-
-        let pre_processed_bytes: Vec<u8> = vec![
-            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
-            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97,
-            97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 128, 0, 0, 0, 0, 0, 0, 1, 184,
-        ];
-
-        assert_eq!(msg, pre_processed_bytes);
-    }
-
-    #[test]
     fn pre_processing_long_one() {
-        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        let raw_msg = get_long_msg(); // setting up this scenario
 
         let msg_bytes = raw_msg.as_bytes().to_vec();
 
@@ -255,10 +299,7 @@ mod tests {
 
     #[test]
     fn parse_block_valid() {
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
+        let msg = get_short_pre_processed(); // setting up this scenario
 
         let block = match parse_block(&msg, 0) {
             Ok(block) => block,
@@ -277,10 +318,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "index is greater than the number of 512-bits blocks")]
     fn parse_block_invalid() {
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
+        let msg = get_short_pre_processed(); // setting up this scenario
 
         let _block = match parse_block(&msg, 65) {
             Ok(block) => block,
@@ -289,11 +327,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_block_whole_message() {
-        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
+    fn parse_block_long_one_whole_message() {
+        let msg = get_long_pre_processed(); // setting up this scenario
 
         let block0 = match parse_block(&msg, 0) {
             Ok(block) => block,
@@ -349,28 +384,20 @@ mod tests {
     }
 
     #[test]
-    fn message_scheduling() {
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
-
-        let block = match parse_block(&msg, 0) {
-            Ok(block) => block,
-            Err(err) => panic!("{err}"),
-        };
+    fn message_schedule_test_short() {
+        let block = get_first_block_short(); // setting up this scenario
 
         let schedule = message_schedule(&block);
 
         let good_schedule: Vec<u32> = vec![
-            1751744512, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 1751744512, 655360,
-            4028244825, 1073742468, 1442562182, 16951296, 2554764994, 1768538123, 2628325004,
-            3359156034, 3870358022, 2641818552, 1669114800, 1070767979, 1243915016, 652088426,
-            1989877954, 3567380066, 2182544060, 1769595360, 3793356024, 1233562599, 1845350614,
-            2846974476, 2029867211, 391648972, 822598888, 3482373360, 961015826, 1589172728,
-            1332217501, 1505673201, 942134798, 1705278904, 418803759, 3236787579, 2755738675,
-            2187538558, 3596201111, 2915422290, 1644498225, 2748313998, 3832314439, 1510965048,
-            991015767, 3092557612, 863408739, 1830348433,
+            0x68698000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x10,
+            0x68698000, 0xa0000, 0xf01a2359, 0x40000284, 0x55fbc086, 0x102a800, 0x98469ec2,
+            0x6969c00b, 0x9ca90e8c, 0xc838a742, 0xe6b0fa06, 0x9d76f3b8, 0x637cabb0, 0x3fd29f6b,
+            0x4a24a308, 0x26de146a, 0x769b20c2, 0xd4a1e662, 0x8216fabc, 0x6979e1e0, 0xe21a04f8,
+            0x4986abe7, 0x6dfdd0d6, 0xa9b1620c, 0x78fd50cb, 0x175816cc, 0x3107dce8, 0xcf90ccf0,
+            0x3947f012, 0x5eb8d9f8, 0x4f68069d, 0x59bebff1, 0x3827d60e, 0x65a47db8, 0x18f6702f,
+            0xc0ed757b, 0xa4413c33, 0x8263307e, 0xd659ac97, 0xadc5d052, 0x62050d31, 0xa3cff18e,
+            0xe46c7a47, 0x5a0f7f38, 0x3b11b357, 0xb854af2c, 0x33769263, 0x6d18e691,
         ];
 
         assert_eq!(schedule, good_schedule);
@@ -378,29 +405,21 @@ mod tests {
 
     #[test]
     fn message_scheduling_long_one() {
-        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
-
-        let block = match parse_block(&msg, 0) {
-            Ok(block) => block,
-            Err(err) => panic!("{err}"),
-        };
+        let block = get_first_block_long(); // setting up this scenario
 
         let schedule = message_schedule(&block);
 
         let good_schedule: Vec<u32> = vec![
-            1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873,
-            1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873, 1633771873,
-            1633771873, 1633771873, 4127079996, 4127079996, 845026631, 845026631, 562127449,
-            562127449, 4142485024, 2340825851, 2097165901, 4202070679, 1214676619, 2864781893,
-            169889552, 2638362293, 2986790745, 619170806, 2545628807, 1752194553, 3897866632,
-            1354584167, 2037939211, 3798754737, 3125072781, 2053181897, 1764381550, 231544716,
-            3582021090, 2147669598, 1900325583, 2688439274, 112371858, 1110188099, 2407788112,
-            4108513933, 2210941747, 4027291822, 2910535786, 3783077996, 2655981588, 2366978167,
-            612225234, 1494184812, 815738812, 1069923231, 447001511, 943759201, 3929715958,
-            242742810,
+            0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161,
+            0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161, 0x61616161,
+            0x61616161, 0x61616161, 0xf5fe3e3c, 0xf5fe3e3c, 0x325e1547, 0x325e1547, 0x21816259,
+            0x21816259, 0xf6e94e20, 0x8b862afb, 0x7d00364d, 0xfa768297, 0x48667e8b, 0xaac11a45,
+            0xa204f10, 0x9d4236b5, 0xb206cf59, 0x24e7cbf6, 0x97bb3687, 0x68705df9, 0xe854b988,
+            0x50bd5067, 0x79787c0b, 0xe26c65b1, 0xba44d38d, 0x7a6111c9, 0x692a536e, 0xdcd178c,
+            0xd5814de2, 0x8002d65e, 0x7144aacf, 0xa03e53ea, 0x6b2a892, 0x422c2043, 0x8f83ee50,
+            0xf4e2f28d, 0x83c84b33, 0xf00b98ae, 0xad7b406a, 0xe17d306c, 0x9e4f1014, 0x8d153877,
+            0x247dd0d2, 0x590f736c, 0x309f2fbc, 0x3fc5bb9f, 0x1aa4b3a7, 0x38409f61, 0xea3ab4f6,
+            0xe77f61a,
         ];
 
         assert_eq!(schedule, good_schedule);
@@ -408,20 +427,9 @@ mod tests {
 
     #[test]
     fn compress_word_test() {
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
-
-        let block = match parse_block(&msg, 0) {
-            Ok(block) => block,
-            Err(err) => panic!("{err}"),
-        };
-
-        let schedule = message_schedule(&block);
+        let schedule = get_schedule_short(); // setting up this scenario
 
         let (current, k) = init_hash();
-
         let current_working_var = WorkingVariables::new(&current);
 
         let compressed = compress_word(current_working_var, schedule[0], k[0]);
@@ -436,17 +444,7 @@ mod tests {
 
     #[test]
     fn compress_chunk_test() {
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
-
-        let block = match parse_block(&msg, 0) {
-            Ok(block) => block,
-            Err(err) => panic!("{err}"),
-        };
-
-        let schedule = message_schedule(&block);
+        let schedule = get_schedule_short(); // setting up this scenario
 
         let (hash, k) = init_hash();
 
@@ -462,12 +460,8 @@ mod tests {
     }
 
     #[test]
-    fn compress_msg_test() {
-        let raw_msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-
-        let msg = pre_process(msg_bytes);
+    fn compress_msg_long() {
+        let msg = get_long_pre_processed(); // setting up this scenario
 
         let (hash, k) = init_hash();
 
@@ -485,23 +479,8 @@ mod tests {
 
     #[test]
     fn add_compressed_chunk_in_hash_test() {
-        let (hash, k) = init_hash();
-
-        let raw_msg = String::from("hi");
-
-        let msg_bytes = raw_msg.as_bytes().to_vec();
-        let msg = pre_process(msg_bytes);
-
-        let block = match parse_block(&msg, 0) {
-            Ok(block) => block,
-            Err(err) => panic!("{err}"),
-        };
-
-        let schedule = message_schedule(&block);
-
-        let init_working_var = WorkingVariables::new(&hash);
-
-        let compressed = compress_chunk(init_working_var, schedule, &k);
+        let (hash, _) = init_hash();
+        let compressed = get_compressed_msg_short(); // setting up this scenario
 
         let updated_hash = add_compressed_chunk_in_hash(hash, &compressed);
 
@@ -550,7 +529,7 @@ mod tests {
 
     #[test]
     fn sha_256_long_one() {
-        let msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").as_bytes().to_vec();
+        let msg = get_long_msg().as_bytes().to_vec();
 
         let hash = sha_256(msg);
         let hash_good = "3e24531cdaa595ab56f976b96c1a1df8009eabec300a5a0261c0e44f47a43b89";

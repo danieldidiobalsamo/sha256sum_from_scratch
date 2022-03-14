@@ -29,34 +29,34 @@ mod tests {
     #[test]
     fn sigma_0_test() {
         assert_eq!(sigma_0(0), 0);
-        assert_eq!(sigma_0(1070767979), 1985952039);
+        assert_eq!(sigma_0(0x3fd29f6b), 0x765f3927);
     }
 
     #[test]
     fn sigma_1_test() {
         assert_eq!(sigma_1(0), 0);
-        assert_eq!(sigma_1(2554764994), 2627669644);
+        assert_eq!(sigma_1(0x98469ec2), 0x9c9f0e8c);
     }
 
     #[test]
     fn big_sigma_0_test() {
-        assert_eq!(big_sigma_0(1550818457), 228811051);
+        assert_eq!(big_sigma_0(0x5c6f9c99), 0xda3612b);
     }
 
     #[test]
     fn big_sigma_1_test() {
-        assert_eq!(big_sigma_1(2184641807), 2223381226);
+        assert_eq!(big_sigma_1(0x8236fd0f), 0x84861aea);
     }
 
     #[test]
     fn choice_test() {
-        let ch = choice(2184641807, 1443935371, 1754755858);
-        assert_eq!(ch, 1787934235);
+        let ch = choice(0x8236fd0f, 0x5610b48b, 0x68977312);
+        assert_eq!(ch, 0x6a91b61b);
     }
 
     #[test]
     fn majority_test() {
-        let maj = majority(1550818457, 2150493220, 3784171943);
-        assert_eq!(maj, 3224235173);
+        let maj = majority(0x5c6f9c99, 0x802dec24, 0xe18de1a7);
+        assert_eq!(maj, 0xc02deca5);
     }
 }
