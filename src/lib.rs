@@ -22,9 +22,9 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let content = fs::read_to_string(config.filename)?;
+    let content_bytes = fs::read(config.filename)?;
 
-    let hash = sha_256::sha_256(content);
+    let hash = sha_256::sha_256(content_bytes);
     println!("{hash}");
 
     Ok(())

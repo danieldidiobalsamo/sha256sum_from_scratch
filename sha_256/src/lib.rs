@@ -268,8 +268,8 @@ fn compress_msg(
     hash
 }
 
-pub fn sha_256(raw_msg: String) -> String {
-    let msg = pre_process(raw_msg.as_bytes().to_vec());
+pub fn sha_256(raw_msg: Vec<u8>) -> String {
+    let msg = pre_process(raw_msg);
 
     let (hash, k) = init_hash();
     let init_working_var = WorkingVariables {
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn sha_256_empty_string() {
-        let msg = String::from("");
+        let msg = String::from("").as_bytes().to_vec();
 
         let hash = sha_256(msg);
         let hash_good = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -717,7 +717,7 @@ mod tests {
 
     #[test]
     fn sha_256_one_chunk() {
-        let msg = String::from("hi");
+        let msg = String::from("hi").as_bytes().to_vec();
 
         let hash = sha_256(msg);
         let hash_good = "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4";
@@ -727,7 +727,7 @@ mod tests {
 
     #[test]
     fn sha_256_long_one() {
-        let msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        let msg = String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").as_bytes().to_vec();
 
         let hash = sha_256(msg);
         let hash_good = "3e24531cdaa595ab56f976b96c1a1df8009eabec300a5a0261c0e44f47a43b89";
@@ -737,10 +737,20 @@ mod tests {
 
     #[test]
     fn sha_256_file() {
-        let msg = fs::read_to_string("./sample_files_for_testing/sample").unwrap();
+        let msg = fs::read("./sample_files_for_testing/sample").unwrap();
 
         let hash = sha_256(msg);
         let hash_good = "a5cac392386ce08fc3ce1a089c912a0f2d7de925a8f5617367c9822ee9b28f37";
+
+        assert_eq!(hash, hash_good);
+    }
+
+    #[test]
+    fn sha_256_binary_file() {
+        let msg = fs::read("./sample_files_for_testing/sample.pdf").unwrap();
+
+        let hash = sha_256(msg);
+        let hash_good = "f7134fdeda6eece3a3508096f3a64a123a397d530753e426ce9a9838dbae0f99";
 
         assert_eq!(hash, hash_good);
     }
