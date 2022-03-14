@@ -1,5 +1,8 @@
 mod math;
 
+mod working_variables;
+use working_variables::WorkingVariables;
+
 fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     let original_length_bits = (msg.len() * 8) as u64;
 
@@ -95,63 +98,6 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
     w
 }
 
-#[derive(Debug, PartialEq)]
-struct WorkingVariables {
-    a: u32,
-    b: u32,
-    c: u32,
-    d: u32,
-    e: u32,
-    f: u32,
-    g: u32,
-    h: u32,
-}
-
-impl WorkingVariables {
-    fn iter(&self) -> Iter {
-        Iter {
-            inner: self,
-            index: 0,
-        }
-    }
-
-    fn update(&mut self, hash: &[u32]) {
-        self.a = hash[0];
-        self.b = hash[1];
-        self.c = hash[2];
-        self.d = hash[3];
-        self.e = hash[4];
-        self.f = hash[5];
-        self.g = hash[6];
-        self.h = hash[7];
-    }
-}
-
-struct Iter<'a> {
-    inner: &'a WorkingVariables,
-    index: u8,
-}
-
-impl<'a> Iterator for Iter<'a> {
-    type Item = &'a u32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let ret = match self.index {
-            0 => &self.inner.a,
-            1 => &self.inner.b,
-            2 => &self.inner.c,
-            3 => &self.inner.d,
-            4 => &self.inner.e,
-            5 => &self.inner.f,
-            6 => &self.inner.g,
-            7 => &self.inner.h,
-            _ => return None,
-        };
-        self.index += 1;
-        Some(ret)
-    }
-}
-
 fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariables {
     let s1 = math::big_sigma_1(current.e);
     let ch = math::choice(current.e, current.f, current.g);
@@ -175,16 +121,7 @@ fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariabl
     let b = current.a;
     let a = temp1.wrapping_add(temp2);
 
-    WorkingVariables {
-        a,
-        b,
-        c,
-        d,
-        e,
-        f,
-        g,
-        h,
-    }
+    WorkingVariables::new(&[a, b, c, d, e, f, g, h])
 }
 
 fn compress_chunk(
@@ -250,16 +187,7 @@ pub fn sha_256(raw_msg: Vec<u8>) -> String {
     let msg = pre_process(raw_msg);
 
     let (hash, k) = init_hash();
-    let init_working_var = WorkingVariables {
-        a: hash[0],
-        b: hash[1],
-        c: hash[2],
-        d: hash[3],
-        e: hash[4],
-        f: hash[5],
-        g: hash[6],
-        h: hash[7],
-    };
+    let init_working_var = WorkingVariables::new(&hash);
 
     let updated_hash = compress_msg(msg, init_working_var, k, hash);
 
@@ -494,29 +422,14 @@ mod tests {
 
         let (current, k) = init_hash();
 
-        let current_working_var = WorkingVariables {
-            a: current[0],
-            b: current[1],
-            c: current[2],
-            d: current[3],
-            e: current[4],
-            f: current[5],
-            g: current[6],
-            h: current[7],
-        };
+        let current_working_var = WorkingVariables::new(&current);
 
         let compressed = compress_word(current_working_var, schedule[0], k[0]);
 
-        let compressed_good = WorkingVariables {
-            a: 1685194829,
-            b: 1779033703,
-            c: 3144134277,
-            d: 1013904242,
-            e: 20013730,
-            f: 1359893119,
-            g: 2600822924,
-            h: 528734635,
-        };
+        let compressed_good = WorkingVariables::new(&[
+            0x6472084d, 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0x13162a2, 0x510e527f, 0x9b05688c,
+            0x1f83d9ab,
+        ]);
 
         assert_eq!(compressed, compressed_good);
     }
@@ -537,29 +450,13 @@ mod tests {
 
         let (hash, k) = init_hash();
 
-        let init_working_var = WorkingVariables {
-            a: hash[0],
-            b: hash[1],
-            c: hash[2],
-            d: hash[3],
-            e: hash[4],
-            f: hash[5],
-            g: hash[6],
-            h: hash[7],
-        };
-
+        let init_working_var = WorkingVariables::new(&hash);
         let compressed = compress_chunk(init_working_var, schedule, &k);
 
-        let compressed_good = WorkingVariables {
-            a: 624516319,
-            b: 2837953809,
-            c: 2736450103,
-            d: 1551180337,
-            e: 3214443962,
-            f: 3336033166,
-            g: 2835841031,
-            h: 2152836491,
-        };
+        let compressed_good = WorkingVariables::new(&[
+            0x25395cdf, 0xa927bd11, 0xa31aea37, 0x5c752231, 0xbf9885ba, 0xc6d7d38e, 0xa9078007,
+            0x8051ad8b,
+        ]);
 
         assert_eq!(compressed, compressed_good);
     }
@@ -574,16 +471,7 @@ mod tests {
 
         let (hash, k) = init_hash();
 
-        let init_working_var = WorkingVariables {
-            a: hash[0],
-            b: hash[1],
-            c: hash[2],
-            d: hash[3],
-            e: hash[4],
-            f: hash[5],
-            g: hash[6],
-            h: hash[7],
-        };
+        let init_working_var = WorkingVariables::new(&hash);
 
         let updated_hash = compress_msg(msg, init_working_var, k, hash);
 
@@ -611,16 +499,7 @@ mod tests {
 
         let schedule = message_schedule(&block);
 
-        let init_working_var = WorkingVariables {
-            a: hash[0],
-            b: hash[1],
-            c: hash[2],
-            d: hash[3],
-            e: hash[4],
-            f: hash[5],
-            g: hash[6],
-            h: hash[7],
-        };
+        let init_working_var = WorkingVariables::new(&hash);
 
         let compressed = compress_chunk(init_working_var, schedule, &k);
 
