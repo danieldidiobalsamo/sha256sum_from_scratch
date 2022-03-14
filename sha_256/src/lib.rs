@@ -1,3 +1,5 @@
+mod math;
+
 fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     let original_length_bits = (msg.len() * 8) as u64;
 
@@ -64,14 +66,6 @@ fn init_hash() -> (Vec<u32>, Vec<u32>) {
     (h_0, k)
 }
 
-fn sigma_2(x: u32) -> u32 {
-    (x.rotate_right(7)) ^ (x.rotate_right(18)) ^ (x >> 3)
-}
-
-fn sigma_1(x: u32) -> u32 {
-    (x.rotate_right(17)) ^ (x.rotate_right(19)) ^ (x >> 10)
-}
-
 fn message_schedule(chunk: &[u8]) -> Vec<u32> {
     // initializing the schedule with zeros
     let mut w: Vec<u32> = vec![0; 64];
@@ -92,9 +86,9 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
     // scheduling
 
     for i in 16..=63 {
-        w[i] = sigma_1(w[i - 2])
+        w[i] = math::sigma_0(w[i - 15])
             .wrapping_add(w[i - 7])
-            .wrapping_add(sigma_2(w[i - 15]))
+            .wrapping_add(math::sigma_1(w[i - 2]))
             .wrapping_add(w[i - 16]);
     }
 
@@ -158,25 +152,9 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-fn big_sigma_0(x: u32) -> u32 {
-    x.rotate_right(2) ^ x.rotate_right(13) ^ x.rotate_right(22)
-}
-
-fn big_sigma_1(x: u32) -> u32 {
-    x.rotate_right(6) ^ x.rotate_right(11) ^ x.rotate_right(25)
-}
-
-fn choice(e: u32, f: u32, g: u32) -> u32 {
-    (e & f) ^ (!e & g)
-}
-
-fn majority(a: u32, b: u32, c: u32) -> u32 {
-    (a & b) ^ (a & c) ^ (b & c)
-}
-
 fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariables {
-    let s1 = big_sigma_1(current.e);
-    let ch = choice(current.e, current.f, current.g);
+    let s1 = math::big_sigma_1(current.e);
+    let ch = math::choice(current.e, current.f, current.g);
     let temp1 = current
         .h
         .wrapping_add(s1)
@@ -184,8 +162,8 @@ fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariabl
         .wrapping_add(k)
         .wrapping_add(word);
 
-    let s0 = big_sigma_0(current.a);
-    let maj = majority(current.a, current.b, current.c);
+    let s0 = math::big_sigma_0(current.a);
+    let maj = math::majority(current.a, current.b, current.c);
     let temp2 = s0.wrapping_add(maj);
 
     let h = current.g;
@@ -440,40 +418,6 @@ mod tests {
 
         assert_eq!(h_0, h_0_good);
         assert_eq!(k, k_good);
-    }
-
-    #[test]
-    fn sigma_2_test() {
-        assert_eq!(sigma_2(0), 0);
-        assert_eq!(sigma_2(1070767979), 1985952039);
-    }
-
-    #[test]
-    fn sigma_1_test() {
-        assert_eq!(sigma_1(0), 0);
-        assert_eq!(sigma_1(2554764994), 2627669644);
-    }
-
-    #[test]
-    fn big_sigma_0_test() {
-        assert_eq!(big_sigma_0(1550818457), 228811051);
-    }
-
-    #[test]
-    fn big_sigma_1_test() {
-        assert_eq!(big_sigma_1(2184641807), 2223381226);
-    }
-
-    #[test]
-    fn choice_test() {
-        let ch = choice(2184641807, 1443935371, 1754755858);
-        assert_eq!(ch, 1787934235);
-    }
-
-    #[test]
-    fn majority_test() {
-        let maj = majority(1550818457, 2150493220, 3784171943);
-        assert_eq!(maj, 3224235173);
     }
 
     #[test]
