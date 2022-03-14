@@ -4,11 +4,11 @@ version = 3
 
 [[package]]
 name = "sha256sum_from_scratch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "sha_256",
 ]
 
 [[package]]
 name = "sha_256"
-version = "0.1.0"
+version = "0.1.1"
