@@ -2,7 +2,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 
-use sha_256;
+use sha_256_scratch;
 
 pub struct Config {
     pub filename: String,
@@ -24,7 +24,7 @@ impl Config {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let content_bytes = fs::read(config.filename)?;
 
-    let hash = sha_256::sha_256(content_bytes);
+    let hash = sha_256_scratch::sha_256(content_bytes);
     println!("{hash}");
 
     Ok(())

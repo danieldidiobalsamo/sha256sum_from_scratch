@@ -2,7 +2,7 @@
 name = "sha256sum_from_scratch"
 version = "0.1.1"
 edition = "2021"
-description = "SHA-256 from-scratch implementation in Rust"
+description = "sha256sum from-scratch implementation in Rust"
 license = "GPL-3.0-or-later"
 keywords = ["cryptography", "sha256", "hash", "cli"]
 categories = ["cryptography", "command-line-utilities"]
@@ -11,4 +11,4 @@ repository = "https://github.com/danieldidiobalsamo/sha256sum_from_scratch"
 
 
 [dependencies]
-sha_256 = {path = "./sha_256", version="0.1.1"}
+sha_256_scratch = {path = "./sha_256_scratch", version="0.1.1"}

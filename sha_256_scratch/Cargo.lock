@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "sha_256"
+name = "sha_256_scratch"
 version = "0.1.1"
