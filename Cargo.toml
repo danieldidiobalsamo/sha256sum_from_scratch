@@ -11,4 +11,4 @@ repository = "https://github.com/danieldidiobalsamo/sha256sum_from_scratch"
 
 
 [dependencies]
-sha_256_scratch = {path = "./sha_256_scratch", version="0.1.1"}
+sha_256_scratch = "0.1.1" # I chose to separate SHA-256 implementation and CLI into two crates

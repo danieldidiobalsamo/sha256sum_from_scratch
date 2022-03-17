@@ -12,3 +12,5 @@ dependencies = [
 [[package]]
 name = "sha_256_scratch"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5de0468b7b28ad109b72023737f84b1612a11a205fc0752dddef44eb58d8ec5"
