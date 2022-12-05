@@ -12,7 +12,7 @@ cargo run --release sha_256_scratch/sample_files_for_testing/sample.pdf
 # Install the command
 
 ~~~
-cargo install sha_256_from_scratch
+cargo install sha256sum_from_scratch
 ~~~
 
 Then you can call the command as following :
