@@ -6,12 +6,8 @@ version = 3
 name = "sha256sum_from_scratch"
 version = "0.1.1"
 dependencies = [
- "sha_256_scratch 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha_256_scratch",
 ]
-
-[[package]]
-name = "sha_256_scratch"
-version = "0.1.1"
 
 [[package]]
 name = "sha_256_scratch"
