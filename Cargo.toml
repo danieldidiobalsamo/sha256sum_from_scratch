@@ -1,14 +1,6 @@
-[package]
-name = "sha256sum_from_scratch"
-version = "0.1.1"
-edition = "2021"
-description = "sha256sum from-scratch implementation in Rust"
-license = "GPL-3.0-or-later"
-keywords = ["cryptography", "sha256", "hash", "cli"]
-categories = ["cryptography", "command-line-utilities"]
-readme = "README.md"
-repository = "https://github.com/danieldidiobalsamo/sha256sum_from_scratch"
-
-
-[dependencies]
-sha_256_scratch = "0.1.1" # I chose to separate SHA-256 implementation and CLI into two crates
+[workspace]
+resolver = "2"
+members = [
+    "sha256sum_from_scratch",
+    "sha_256_scratch",
+]
