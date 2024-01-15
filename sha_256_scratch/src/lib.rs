@@ -13,9 +13,7 @@ fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     let nb_zero_bits = (512 + 448 - ((original_length_bits as u32) % 512 + 1)) % 512;
     let nb_zero_bytes = nb_zero_bits / 8;
 
-    for _ in 0..nb_zero_bytes {
-        msg.push(0);
-    }
+    msg.append(&mut vec![0; nb_zero_bytes as usize]);
 
     // padding original length as 64 bits
     let mut mask = 0xFF00000000000000;
@@ -30,15 +28,13 @@ fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     msg
 }
 
-fn parse_block<'a>(msg: &'a Vec<u8>, index: usize) -> Result<&'a [u8], &'static str> {
-    let nb_blocks = msg.len() / 64;
-
-    if index > nb_blocks {
+fn parse_block(msg: &Vec<u8>, index: usize) -> Result<&[u8], &'static str> {
+    if index > msg.len() / 64 {
         return Err("index is greater than the number of 512-bits blocks");
     }
 
-    let start = ((512 * index) / 8) as usize;
-    let end = (start + (512 / 8)) as usize;
+    let start = (512 * index) / 8;
+    let end = start + (512 / 8);
 
     Ok(&msg[start..end])
 }
@@ -127,7 +123,7 @@ fn compress_word(current: WorkingVariables, word: u32, k: u32) -> WorkingVariabl
 fn compress_chunk(
     init_working_var: WorkingVariables,
     schedule: Vec<u32>,
-    k: &Vec<u32>,
+    k: &[u32],
 ) -> WorkingVariables {
     let mut current_working_var = init_working_var;
 
@@ -151,8 +147,9 @@ fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: &WorkingVariables) -
 fn append_hash_values(hash_values: Vec<u32>) -> String {
     hash_values
         .into_iter()
-        .map(|h| format!("{:08x}", h))
-        .collect::<String>()
+        .fold(String::new(), |full_hash, hash| {
+            format!("{}{:08x}", full_hash, hash)
+        })
 }
 
 fn compress_msg(
@@ -164,8 +161,7 @@ fn compress_msg(
     let mut hash = init_hash;
     let mut working_var = init_working_var;
 
-    let nb_blocks = msg.len() / 64;
-    for i in 0..nb_blocks {
+    for i in 0..msg.len() / 64 {
         working_var.update(&hash);
 
         let block = match parse_block(&msg, i) {
@@ -173,7 +169,7 @@ fn compress_msg(
             Err(err) => panic!("{err}"),
         };
 
-        let schedule = message_schedule(&block);
+        let schedule = message_schedule(block);
 
         working_var = compress_chunk(working_var, schedule, &k);
 
@@ -231,7 +227,7 @@ mod tests {
             Err(err) => panic!("{err}"),
         };
 
-        block.clone().to_vec()
+        block.to_vec()
     }
 
     fn get_first_block_long() -> Vec<u8> {
@@ -242,7 +238,7 @@ mod tests {
             Err(err) => panic!("{err}"),
         };
 
-        block.clone().to_vec()
+        block.to_vec()
     }
 
     fn get_schedule_short() -> Vec<u32> {
