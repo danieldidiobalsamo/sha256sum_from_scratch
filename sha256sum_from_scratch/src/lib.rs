@@ -2,8 +2,6 @@ use std::env;
 use std::error::Error;
 use std::fs;
 
-use sha_256_scratch;
-
 pub struct Config {
     pub filename: String,
 }
