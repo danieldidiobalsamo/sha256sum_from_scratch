@@ -1,22 +1,18 @@
 # About
 
-This project consists in a from scratch implementation of sha256sum in Rust.
-If you are interested in only the SHA-256 implementation without the CLI command, please check out "sha_256_scratch" crate.
+Rust SHA-256 hash function from scratch implementation that can be called from CLI.
+Hash implementation and CLI are two separated crates.
 
-# How to run
+# How to launch (recommended)
+
+Install [Rust](https://www.rust-lang.org/tools/install) and launch:
+~~~
+cargo install sha256sum_from_scratch
+sha256sum_from_scratch <FILE_PATH>
+~~~
+
+# Build manually
 
 ~~~
 cargo run --release sha_256_scratch/sample_files_for_testing/sample.pdf
 ~~~
-
-# Install the command
-
-~~~
-cargo install sha256sum_from_scratch
-~~~
-
-Then you can call the command as following :
-~~~
-sha256sum_from_scratch file_you_want
-~~~
-
