@@ -6,4 +6,5 @@ description = "SHA-256 from-scratch implementation"
 license = "GPL-3.0-or-later"
 keywords = ["cryptography", "sha256", "hash"]
 categories = ["cryptography"]
+readme = "../README.md"
 repository = "https://github.com/danieldidiobalsamo/sha256sum_from_scratch"
