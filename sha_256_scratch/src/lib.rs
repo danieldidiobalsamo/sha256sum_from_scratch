@@ -49,8 +49,8 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
 
         let mut word = 0u32;
 
-        for j in 0..4 {
-            word |= (bytes_line[j] as u32) << (24 - (8 * j));
+        for (j, b) in bytes_line.iter().enumerate().take(4) {
+            word |= (*b as u32) << (24 - (8 * j));
         }
 
         w[i] = word;
@@ -145,7 +145,7 @@ fn compress_msg(
 
         let schedule = message_schedule(block);
 
-        working_var = compress_chunk(working_var, schedule, &k);
+        working_var = compress_chunk(working_var, schedule, k);
 
         hash = add_compressed_chunk_in_hash(&hash, &working_var);
     }
