@@ -1,5 +1,6 @@
-mod math;
+#![forbid(unsafe_code)]
 
+mod math;
 mod working_variables;
 use working_variables::WorkingVariables;
 
@@ -28,7 +29,7 @@ fn pre_process(mut msg: Vec<u8>) -> Vec<u8> {
     msg
 }
 
-fn parse_block(msg: &Vec<u8>, index: usize) -> Result<&[u8], &'static str> {
+fn parse_block(msg: &[u8], index: usize) -> Result<&[u8], &'static str> {
     if index > msg.len() / 64 {
         return Err("index is greater than the number of 512-bits blocks");
     }
@@ -37,32 +38,6 @@ fn parse_block(msg: &Vec<u8>, index: usize) -> Result<&[u8], &'static str> {
     let end = start + (512 / 8);
 
     Ok(&msg[start..end])
-}
-
-fn init_hash() -> (Vec<u32>, Vec<u32>) {
-    // first thirty-two bits of the fractional parts of the square roots of the first eight prime numbers
-    // set by the SHA-256 specification
-    let h_0 = vec![
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
-        0x5be0cd19,
-    ];
-
-    //first thirty-two bits of the fractional parts of the cube roots of the first sixty-four prime numbers
-    // set by the SHA-256 specification
-    let k = vec![
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
-        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
-        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
-        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
-        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-        0xc67178f2,
-    ];
-
-    (h_0, k)
 }
 
 fn message_schedule(chunk: &[u8]) -> Vec<u32> {
@@ -75,8 +50,8 @@ fn message_schedule(chunk: &[u8]) -> Vec<u32> {
 
         let mut word = 0u32;
 
-        for j in 0..4 {
-            word |= (bytes_line[j] as u32) << (24 - (8 * j));
+        for (j, b) in bytes_line.iter().enumerate().take(4) {
+            word |= (*b as u32) << (24 - (8 * j));
         }
 
         w[i] = word;
@@ -134,7 +109,7 @@ fn compress_chunk(
     current_working_var
 }
 
-fn add_compressed_chunk_in_hash(hash: Vec<u32>, compressed: &WorkingVariables) -> Vec<u32> {
+fn add_compressed_chunk_in_hash(hash: &[u32], compressed: &WorkingVariables) -> Vec<u32> {
     let mut updated: Vec<u32> = Vec::new();
 
     for (index, var) in compressed.iter().enumerate() {
@@ -155,10 +130,10 @@ fn append_hash_values(hash_values: Vec<u32>) -> String {
 fn compress_msg(
     msg: Vec<u8>,
     init_working_var: WorkingVariables,
-    k: Vec<u32>,
-    init_hash: Vec<u32>,
+    k: &[u32],
+    init_hash: &[u32],
 ) -> Vec<u32> {
-    let mut hash = init_hash;
+    let mut hash = init_hash.to_vec();
     let mut working_var = init_working_var;
 
     for i in 0..msg.len() / 64 {
@@ -171,9 +146,9 @@ fn compress_msg(
 
         let schedule = message_schedule(block);
 
-        working_var = compress_chunk(working_var, schedule, &k);
+        working_var = compress_chunk(working_var, schedule, k);
 
-        hash = add_compressed_chunk_in_hash(hash, &working_var);
+        hash = add_compressed_chunk_in_hash(&hash, &working_var);
     }
 
     hash
@@ -182,10 +157,10 @@ fn compress_msg(
 pub fn sha_256(raw_msg: Vec<u8>) -> String {
     let msg = pre_process(raw_msg);
 
-    let (hash, k) = init_hash();
+    let (hash, k) = (math::H_0, math::K);
     let init_working_var = WorkingVariables::new(&hash);
 
-    let updated_hash = compress_msg(msg, init_working_var, k, hash);
+    let updated_hash = compress_msg(msg, init_working_var, &k, &hash);
 
     append_hash_values(updated_hash)
 }
@@ -249,7 +224,7 @@ mod tests {
 
     fn get_compressed_msg_short() -> WorkingVariables {
         let schedule = get_schedule_short();
-        let (hash, k) = init_hash();
+        let (hash, k) = (math::H_0, math::K);
 
         let init_working_var = WorkingVariables::new(&hash);
 
@@ -354,32 +329,6 @@ mod tests {
     }
 
     #[test]
-    fn hash_init() {
-        let (h_0, k) = init_hash();
-
-        let h_0_good = vec![
-            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
-            0x5be0cd19,
-        ];
-
-        let k_good = vec![
-            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
-            0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
-            0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
-            0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-            0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-            0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-            0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
-            0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-            0xc67178f2,
-        ];
-
-        assert_eq!(h_0, h_0_good);
-        assert_eq!(k, k_good);
-    }
-
-    #[test]
     fn message_schedule_test_short() {
         let block = get_first_block_short(); // setting up this scenario
 
@@ -425,7 +374,7 @@ mod tests {
     fn compress_word_test() {
         let schedule = get_schedule_short(); // setting up this scenario
 
-        let (current, k) = init_hash();
+        let (current, k) = (math::H_0, math::K);
         let current_working_var = WorkingVariables::new(&current);
 
         let compressed = compress_word(current_working_var, schedule[0], k[0]);
@@ -442,7 +391,7 @@ mod tests {
     fn compress_chunk_test() {
         let schedule = get_schedule_short(); // setting up this scenario
 
-        let (hash, k) = init_hash();
+        let (hash, k) = (math::H_0, math::K);
 
         let init_working_var = WorkingVariables::new(&hash);
         let compressed = compress_chunk(init_working_var, schedule, &k);
@@ -459,11 +408,11 @@ mod tests {
     fn compress_msg_long() {
         let msg = get_long_pre_processed(); // setting up this scenario
 
-        let (hash, k) = init_hash();
+        let (hash, k) = (math::H_0, math::K);
 
         let init_working_var = WorkingVariables::new(&hash);
 
-        let updated_hash = compress_msg(msg, init_working_var, k, hash);
+        let updated_hash = compress_msg(msg, init_working_var, &k, &hash);
 
         let updated_hash_good = vec![
             0x3e24531c, 0xdaa595ab, 0x56f976b9, 0x6c1a1df8, 0x009eabec, 0x300a5a02, 0x61c0e44f,
@@ -475,10 +424,10 @@ mod tests {
 
     #[test]
     fn add_compressed_chunk_in_hash_test() {
-        let (hash, _) = init_hash();
+        let (hash, _) = (math::H_0, math::K);
         let compressed = get_compressed_msg_short(); // setting up this scenario
 
-        let updated_hash = add_compressed_chunk_in_hash(hash, &compressed);
+        let updated_hash = add_compressed_chunk_in_hash(&hash, &compressed);
 
         let updated = vec![
             0x8f434346, 0x648f6b96, 0xdf89dda9, 0x01c5176b, 0x10a6d839, 0x61dd3c1a, 0xc88b59b2,
