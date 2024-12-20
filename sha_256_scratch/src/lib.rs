@@ -151,7 +151,7 @@ fn compress_msg(
         hash = add_compressed_chunk_in_hash(&hash, &working_var);
     }
 
-    hash.to_vec()
+    hash
 }
 
 pub fn sha_256(raw_msg: Vec<u8>) -> String {
