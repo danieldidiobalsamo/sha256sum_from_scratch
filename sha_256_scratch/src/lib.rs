@@ -1,5 +1,6 @@
-mod math;
+#![forbid(unsafe_code)]
 
+mod math;
 mod working_variables;
 use working_variables::WorkingVariables;
 
